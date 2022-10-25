@@ -2,6 +2,7 @@ const express = require("express");
 const dotenv = require("dotenv");
 const fileUpload = require("express-fileupload");
 const cors = require("cors");
+const path = require("path");
 const locationRoutes = require("./routes/location");
 
 const connectDB = require("./config/connectDB");
@@ -19,6 +20,8 @@ app.use(fileUpload());
 
 //serve static files
 app.use(express.static("uploads"));
+
+app.use(express.static(path.join(__dirname, "travel-logs", "build")));
 
 app.use("/api/location", locationRoutes);
 
@@ -46,6 +49,10 @@ app.use("/api/location", locationRoutes);
 // });
 
 const PORT = 5000;
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "travel-logs", "build", "index.html"));
+});
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
