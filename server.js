@@ -48,7 +48,7 @@ app.use("/api/location", locationRoutes);
 //   });
 // });
 
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "travel-logs", "build", "index.html"));
