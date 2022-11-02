@@ -10,8 +10,11 @@ import axios from "axios";
 import { api_url } from "../utils/API_URL";
 import MarkerImg from "../assets/marker.png";
 import Location from "./Location";
+import { storage } from "../firebase";
+import { ref, getDownloadURL, uploadBytesResumable } from "firebase/storage";
 
 let token = process.env.REACT_APP_MAPBOX_KEY;
+const allowedExtensions = ["jpg", "jpeg", "png", "gif"];
 
 function Main() {
   const inputRef = React.useRef();
@@ -28,6 +31,8 @@ function Main() {
   const [rating, setRating] = React.useState(0);
   const [selectedPoint, setSelectedPoint] = React.useState(null);
   const [files, setFiles] = React.useState([]);
+  const [progresspercent, setProgresspercent] = React.useState(0);
+  const [imageUrl, setImageUrl] = React.useState("");
   const [errors, setErrors] = React.useState({});
 
   const fetchData = async () => {
@@ -63,8 +68,14 @@ function Main() {
       return;
     }
 
-    if (rating === 0 && rating >= 0 && rating < 6) {
+    console.log(Number(rating) > 5);
+    if (rating === 0) {
       setErrors({ rating: "Rating is required" });
+      return;
+    }
+
+    if (Number(rating) <= 0 || Number(rating) > 5) {
+      setErrors({ rating: "Rating must be between 1 and 5" });
       return;
     }
 
@@ -79,30 +90,91 @@ function Main() {
     formData.append("rating", rating);
     formData.append("lat", newLocation.lat);
     formData.append("lng", newLocation.lng);
-    formData.append("image", files[0]);
+    // formData.append("image", files[0]);
 
-    axios
-      .post(`${api_url}api/location`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
+    if (files[0]) {
+      if (!allowedExtensions.includes(files[0].name.split(".").pop())) {
+        setErrors({ files: "File type not allowed" });
+        inputRef.current.value = "";
+        return;
+      }
+
+      const storageRef = ref(storage, `uploads/${files[0].name}`);
+      const uploadTask = uploadBytesResumable(storageRef, files[0]);
+
+      uploadTask.on(
+        "state_changed",
+        (snapshot) => {
+          const progress = Math.round(
+            (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+          );
+
+          console.log(progress);
+          setProgresspercent(progress);
         },
-      })
-      .then(async (res) => {
-        setNewLocation(null);
-        await fetchData();
-      })
-      .catch((err) => {
-        if (err.response.data?.uploadError) {
-          setFiles([]);
-          inputRef.current.value = "";
-          setErrors({ files: err.response.data.uploadError });
-        }
-      });
+        (error) => {
+          alert(error);
+        },
 
-    setPlacename("");
-    setDetails("");
-    setRating(0);
-    setFiles([]);
+        async () => {
+          await getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+            // console.log(downloadURL);
+            // setImageUrl(downloadURL);
+            formData.append("firebaseImg", downloadURL);
+
+            axios
+              .post(`${api_url}api/location`, formData, {
+                headers: {
+                  "Content-Type": "multipart/form-data",
+                },
+              })
+              .then(async (res) => {
+                setNewLocation(null);
+                await fetchData();
+              })
+              .catch((err) => {
+                if (err.response.data?.uploadError) {
+                  setFiles([]);
+                  inputRef.current.value = "";
+                  setErrors({ files: err.response.data.uploadError });
+                }
+              });
+
+            setPlacename("");
+            setDetails("");
+            setRating(0);
+            setFiles([]);
+            setImageUrl("");
+            setProgresspercent(0);
+          });
+        }
+      );
+    } else {
+      axios
+        .post(`${api_url}api/location`, formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        })
+        .then(async (res) => {
+          setNewLocation(null);
+          await fetchData();
+        })
+        .catch((err) => {
+          if (err.response.data?.uploadError) {
+            setFiles([]);
+            inputRef.current.value = "";
+            setErrors({ files: err.response.data.uploadError });
+          }
+        });
+
+      setPlacename("");
+      setDetails("");
+      setRating(0);
+      setFiles([]);
+      setImageUrl("");
+      setProgresspercent(0);
+    }
   };
 
   return (
@@ -225,6 +297,19 @@ function Main() {
                     {errors.files && (
                       <div className="invalid-feedback">{errors.files}</div>
                     )}
+
+                    <div className="progress">
+                      <div
+                        className="progress-bar"
+                        role="progressbar"
+                        style={{
+                          width: `${progresspercent}%`,
+                        }}
+                        aria-valuenow={progresspercent}
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                      ></div>
+                    </div>
 
                     <button className="btn btn-success mt-2" type="submit">
                       submit

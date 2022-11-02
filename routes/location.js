@@ -16,7 +16,7 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
-  const { name, description, rating, lat, lng, image } = req.body;
+  const { name, description, rating, lat, lng, image, firebaseImg } = req.body;
 
   let sampleFile;
   let uploadPath;
@@ -28,7 +28,7 @@ router.post("/", async (req, res) => {
       name,
       description,
       rating,
-      image: "",
+      image: firebaseImg,
       lat,
       lng,
     });

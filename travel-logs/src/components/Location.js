@@ -1,13 +1,13 @@
 import React from "react";
-import { api_url } from "../utils/API_URL";
+// import { api_url } from "../utils/API_URL";
 
 const Location = ({ selectedPoint, deletePoint }) => {
   return (
     <div className="card mt-3">
-      {selectedPoint.image.length > 0 && (
+      {selectedPoint.image?.length > 0 && (
         <img
           className="card-img-top"
-          src={api_url + selectedPoint?.image}
+          src={selectedPoint?.image}
           alt="place"
           style={{ height: "200px", objectFit: "cover" }}
         />
